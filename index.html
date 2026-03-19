@@ -116,20 +116,23 @@
     <div id="count" class="count"></div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const STORAGE_KEY = 'shopping-list';
+    const SUPABASE_URL = 'https://srljyvyckjmewldnncfw.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNybGp5dnlja2ptZXdsZG5uY2Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTk5NDksImV4cCI6MjA4OTQzNTk0OX0.IJCCZq8TGo4lc-Nl3i_sOeCyTfpDjBxEm9CNtPjQhXU';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    function load() {
-      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-      catch { return []; }
+    async function loadItems() {
+      const { data, error } = await supabase
+        .from('shopping_items')
+        .select('*')
+        .order('created_at', { ascending: true });
+      if (error) { console.error('Load error:', error); return []; }
+      return data;
     }
 
-    function save(items) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-    }
-
-    function render() {
-      const items = load();
+    async function render() {
+      const items = await loadItems();
       const list = document.getElementById('list');
       const count = document.getElementById('count');
 
@@ -142,11 +145,11 @@
       const checked = items.filter(i => i.checked).length;
       count.textContent = `${checked} / ${items.length} 완료`;
 
-      list.innerHTML = items.map((item, i) => `
+      list.innerHTML = items.map(item => `
         <li class="${item.checked ? 'checked' : ''}">
-          <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggle(${i})">
+          <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggle(${item.id})">
           <span>${escapeHtml(item.name)}</span>
-          <button onclick="remove(${i})" title="삭제">&times;</button>
+          <button onclick="remove(${item.id})" title="삭제">&times;</button>
         </li>
       `).join('');
     }
@@ -157,31 +160,43 @@
       return div.innerHTML;
     }
 
-    function addItem() {
+    async function addItem() {
       const input = document.getElementById('itemInput');
       const name = input.value.trim();
       if (!name) return;
 
-      const items = load();
-      items.push({ name, checked: false });
-      save(items);
+      const { error } = await supabase
+        .from('shopping_items')
+        .insert({ name, checked: false });
+      if (error) { console.error('Insert error:', error); return; }
+
       input.value = '';
       input.focus();
-      render();
+      await render();
     }
 
-    function toggle(index) {
-      const items = load();
-      items[index].checked = !items[index].checked;
-      save(items);
-      render();
+    async function toggle(id) {
+      const { data } = await supabase
+        .from('shopping_items')
+        .select('checked')
+        .eq('id', id)
+        .single();
+
+      await supabase
+        .from('shopping_items')
+        .update({ checked: !data.checked })
+        .eq('id', id);
+
+      await render();
     }
 
-    function remove(index) {
-      const items = load();
-      items.splice(index, 1);
-      save(items);
-      render();
+    async function remove(id) {
+      await supabase
+        .from('shopping_items')
+        .delete()
+        .eq('id', id);
+
+      await render();
     }
 
     document.getElementById('itemInput').addEventListener('keydown', e => {
