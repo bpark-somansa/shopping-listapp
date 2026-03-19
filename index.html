@@ -118,12 +118,13 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const SUPABASE_URL = 'https://srljyvyckjmewldnncfw.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNybGp5dnlja2ptZXdsZG5uY2Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTk5NDksImV4cCI6MjA4OTQzNTk0OX0.IJCCZq8TGo4lc-Nl3i_sOeCyTfpDjBxEm9CNtPjQhXU';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const db = window.supabase.createClient(
+      'https://srljyvyckjmewldnncfw.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNybGp5dnlja2ptZXdsZG5uY2Z3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM4NTk5NDksImV4cCI6MjA4OTQzNTk0OX0.IJCCZq8TGo4lc-Nl3i_sOeCyTfpDjBxEm9CNtPjQhXU'
+    );
 
-    async function loadItems() {
-      const { data, error } = await supabase
+    async function load() {
+      const { data, error } = await db
         .from('shopping_items')
         .select('*')
         .order('created_at', { ascending: true });
@@ -132,7 +133,7 @@
     }
 
     async function render() {
-      const items = await loadItems();
+      const items = await load();
       const list = document.getElementById('list');
       const count = document.getElementById('count');
 
@@ -165,7 +166,7 @@
       const name = input.value.trim();
       if (!name) return;
 
-      const { error } = await supabase
+      const { error } = await db
         .from('shopping_items')
         .insert({ name, checked: false });
       if (error) { console.error('Insert error:', error); return; }
@@ -176,13 +177,13 @@
     }
 
     async function toggle(id) {
-      const { data } = await supabase
+      const { data } = await db
         .from('shopping_items')
         .select('checked')
         .eq('id', id)
         .single();
 
-      await supabase
+      await db
         .from('shopping_items')
         .update({ checked: !data.checked })
         .eq('id', id);
@@ -191,7 +192,7 @@
     }
 
     async function remove(id) {
-      await supabase
+      await db
         .from('shopping_items')
         .delete()
         .eq('id', id);
